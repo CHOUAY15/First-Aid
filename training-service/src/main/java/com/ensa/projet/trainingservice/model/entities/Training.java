@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -29,9 +30,10 @@ public class Training {
     @OrderColumn(name = "instruction_order")
     private List<String> instructions;
     @OneToMany(mappedBy = "training", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Quiz> quizzes;
-    @OneToMany(mappedBy = "training", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Ressource3D> ressources;
+    @Builder.Default
+    private List<Quiz> quizzes=new ArrayList<>();;
+    @OneToOne(mappedBy = "training", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Ressource3D ressource;
 
 
 

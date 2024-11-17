@@ -16,7 +16,7 @@ public class TrainingDTO {
     private String title;
     private String description;
     private List<String> instructions;
-    private List<Resource3DDTO> resources;
+    private Resource3DDTO resource;
     private List<QuizDTO> quizzes;
 
 }

@@ -19,7 +19,7 @@ public class Ressource3D {
     private Integer id;
     private String description;
     private String url;
-    @ManyToOne(fetch = FetchType.LAZY)
+    @OneToOne
     @JoinColumn(name = "training_id", nullable = false)
     private Training training;
     private String format;
