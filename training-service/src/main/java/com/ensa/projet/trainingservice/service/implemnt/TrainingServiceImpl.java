@@ -123,7 +123,7 @@ public class TrainingServiceImpl  implements TrainingService {
                 .title(training.getTitle())
                 .description(training.getDescription())
                 .instructions(training.getInstructions())
-                .resource(convertToResourceDTO(training.getRessource()))
+                .resource(training.getRessource()!=null ? convertToResourceDTO(training.getRessource()) : null)
                 .quizzes(training.getQuizzes().stream()
                         .map(this::convertToQuizDTO)
                         .collect(Collectors.toList()))
