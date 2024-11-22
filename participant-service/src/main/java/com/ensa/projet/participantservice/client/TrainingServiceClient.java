@@ -15,8 +15,8 @@ public interface TrainingServiceClient {
     @GetMapping("/trainings/{id}")
     TrainingDTO getTraining(@PathVariable Integer id);
 
-    @GetMapping("/trainings/{id}/quizzes")
-    List<QuizDTO> getQuizzes(@PathVariable Integer id);
+    @GetMapping("/quiz/{trainingId}")
+    List<QuizDTO> getQuizzes(@PathVariable Integer trainingId);
 
 
 }
