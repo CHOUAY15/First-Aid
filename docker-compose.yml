@@ -1,0 +1,140 @@
+version: "3.8"
+services:
+  mysql-participant:
+    image: mysql:8.0
+    container_name: mysql-participant
+    environment:
+      - MYSQL_DATABASE=first_aid_participant_bd
+      - MYSQL_ROOT_PASSWORD=root
+    volumes:
+      - mysql_participant_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  mysql-training:
+    image: mysql:8.0
+    container_name: mysql-training
+    environment:
+      - MYSQL_DATABASE=first_aid_training_bd
+      - MYSQL_ROOT_PASSWORD=root
+    volumes:
+      - mysql_training_data:/var/lib/mysql
+    ports:
+      - "3307:3306"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # PHPMyAdmin
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin-firstaid
+    ports:
+      - "8089:80"
+    networks:
+      - app-network
+    environment:
+      PMA_HOSTS: mysql-participant,mysql-training
+      PMA_PORTS: 3306,3306
+
+  # Config Server
+  config-service:
+    build:
+      context: ./config-service
+      dockerfile: Dockerfile
+    container_name: config-service
+    ports:
+      - "9999:9999"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9999/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Service Discovery (Eureka)
+  discovery-service:
+    build:
+      context: ./discovery-service
+      dockerfile: Dockerfile
+    container_name: discovery-service
+    ports:
+      - "8761:8761"
+    networks:
+      - app-network
+    depends_on:
+      config-service:
+        condition: service_healthy
+
+  # API Gateway
+  gateway-service:
+    build:
+      context: ./gateway-service
+      dockerfile: Dockerfile
+    container_name: gateway-service
+    ports:
+      - "8888:8888"
+    networks:
+      - app-network
+    depends_on:
+      - discovery-service
+
+  # Participant Service
+  participant-service:
+    build:
+      context: ./participant-service
+      dockerfile: Dockerfile
+    container_name: participant-service
+    ports:
+      - "8082:8082"
+    networks:
+      - app-network
+    depends_on:
+      mysql-participant:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://config-service:9999
+      - SPRING_CLOUD_CONFIG_URI=http://config-service:9999
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+  # Training Service
+  training-service:
+    build:
+      context: ./training-service
+      dockerfile: Dockerfile
+    container_name: training-service
+    ports:
+      - "8081:8081"
+    networks:
+      - app-network
+    depends_on:
+      mysql-training:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://config-service:9999
+      - SPRING_CLOUD_CONFIG_URI=http://config-service:9999
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+volumes:
+  mysql_participant_data:
+  mysql_training_data:
+
+networks:
+  app-network:
+    driver: bridge
