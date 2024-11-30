@@ -1,0 +1,20 @@
+version: "3.8"
+services:
+  nexus:
+    image: sonatype/nexus3
+    ports:
+      - "9081:8081"  # Interface Web Nexus
+      - "9082:8082"  # Docker proxy
+      - "9083:8083"  # Docker hosted registry
+    restart: always
+    volumes:
+      - nexus-work:/sonatype-work
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  nexus-work:
