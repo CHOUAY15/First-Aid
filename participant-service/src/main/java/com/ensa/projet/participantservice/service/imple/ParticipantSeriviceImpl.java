@@ -1,6 +1,7 @@
 package com.ensa.projet.participantservice.service.imple;
 
 import com.ensa.projet.participantservice.client.TrainingServiceClient;
+import com.ensa.projet.participantservice.dto.KeycloakUserInfo;
 import com.ensa.projet.participantservice.dto.QuizDTO;
 import com.ensa.projet.participantservice.dto.TrainingDTO;
 import com.ensa.projet.participantservice.entities.*;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -31,6 +33,8 @@ public class ParticipantSeriviceImpl implements ParticipantService {
     private final TrainingServiceClient trainingService;
     private static final float CERTIFICATION_SCORE_THRESHOLD = 70.0f;
 
+
+
     @Autowired
     public ParticipantSeriviceImpl(ParticipantRepository participantRepository, TrainingProgressRepository progressRepository, TestResultRepository testResultRepository, CertificationRepository certificationRepository, TrainingServiceClient trainingService) {
         this.participantRepository = participantRepository;
@@ -38,6 +42,31 @@ public class ParticipantSeriviceImpl implements ParticipantService {
         this.testResultRepository = testResultRepository;
         this.certificationRepository = certificationRepository;
         this.trainingService = trainingService;
+    }
+
+
+    @Override
+    @Transactional
+    public Participant createParticipant(String userId, KeycloakUserInfo userInfo) {
+        Optional<Participant> existingParticipant = participantRepository.findByUserId(userId);
+        if (existingParticipant.isPresent()) {
+            throw new ResourceNotFoundException("Participant already exists for user: " + userId);
+        }
+        Participant participant = Participant.builder()
+                .userId(userId)
+                .firstName(userInfo.getFirstName())
+                .lastName(userInfo.getLastName())
+                .build();
+
+        participant = participantRepository.save(participant);
+
+        return participant;
+    }
+
+    @Override
+    public Participant getParticipantByUserId(String userId) {
+        return participantRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Participant not found for user: " + userId));
     }
 
 
@@ -85,6 +114,8 @@ public class ParticipantSeriviceImpl implements ParticipantService {
 
         return savedResult;
     }
+
+
 
     private float calculateScore(List<ParticipantAnswer> userAnswers) {
         long correctAnswers = userAnswers.stream()
