@@ -17,6 +17,8 @@ public class Participant {
     private Integer id;
     private String firstName;
     private String lastName;
+    @Column(unique = true)
+    private String userId;
 
 
 
