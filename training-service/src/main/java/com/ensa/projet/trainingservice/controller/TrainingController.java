@@ -2,7 +2,6 @@ package com.ensa.projet.trainingservice.controller;
 
 
 import com.ensa.projet.trainingservice.model.dao.QuizDTO;
-import com.ensa.projet.trainingservice.model.dao.Resource3DDTO;
 import com.ensa.projet.trainingservice.model.dao.TrainingDTO;
 import com.ensa.projet.trainingservice.service.interfaces.TrainingService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,14 +50,6 @@ public class TrainingController {
     public ResponseEntity<Void> deleteTraining(@PathVariable Integer id) {
         trainingService.deleteTraining(id);
         return ResponseEntity.noContent().build();
-    }
-
-    @PostMapping("/{id}/resources")
-    public ResponseEntity<Resource3DDTO> addResource(
-            @PathVariable Integer id,
-            @RequestBody Resource3DDTO resourceDTO) {
-        Resource3DDTO added = trainingService.addResource(id, resourceDTO);
-        return new ResponseEntity<>(added, HttpStatus.CREATED);
     }
 
     @PostMapping("/{id}/quizzes")

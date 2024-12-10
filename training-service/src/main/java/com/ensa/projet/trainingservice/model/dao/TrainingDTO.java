@@ -13,10 +13,12 @@ import java.util.List;
 @AllArgsConstructor
 public class TrainingDTO {
     private Integer id;
+    private String iconPath;
     private String title;
-    private String description;
+    private String goals;
+    private String urlYtb;
     private List<String> instructions;
-    private Resource3DDTO resource;
+    private List<CourseDto> courses;
     private List<QuizDTO> quizzes;
 
 }

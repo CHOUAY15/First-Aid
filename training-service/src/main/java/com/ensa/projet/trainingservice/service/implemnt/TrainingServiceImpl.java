@@ -1,14 +1,13 @@
 package com.ensa.projet.trainingservice.service.implemnt;
 
 import com.ensa.projet.trainingservice.exception.ResourceNotFoundException;
+import com.ensa.projet.trainingservice.model.dao.CourseDto;
 import com.ensa.projet.trainingservice.model.dao.QuizDTO;
-import com.ensa.projet.trainingservice.model.dao.Resource3DDTO;
 import com.ensa.projet.trainingservice.model.dao.TrainingDTO;
+import com.ensa.projet.trainingservice.model.entities.Course;
 import com.ensa.projet.trainingservice.model.entities.Quiz;
-import com.ensa.projet.trainingservice.model.entities.Ressource3D;
 import com.ensa.projet.trainingservice.model.entities.Training;
 import com.ensa.projet.trainingservice.repository.QuizRepository;
-import com.ensa.projet.trainingservice.repository.RessourceRepository;
 import com.ensa.projet.trainingservice.repository.TrainingRepository;
 import com.ensa.projet.trainingservice.service.interfaces.TrainingService;
 import jakarta.transaction.Transactional;
@@ -28,14 +27,14 @@ public class TrainingServiceImpl  implements TrainingService {
 
     private final TrainingRepository trainingRepository;
     private final QuizRepository quizRepository;
-    private final RessourceRepository ressourceRepository;
+
 
     @Autowired
     public TrainingServiceImpl(TrainingRepository trainingRepository,
-                           RessourceRepository resourceRepository,
+
                            QuizRepository quizRepository) {
         this.trainingRepository = trainingRepository;
-        this.ressourceRepository = resourceRepository;
+
         this.quizRepository = quizRepository;
     }
 
@@ -78,21 +77,7 @@ public class TrainingServiceImpl  implements TrainingService {
         trainingRepository.deleteById(id);
     }
 
-    @Override
-    public Resource3DDTO addResource(Integer trainingId, Resource3DDTO resourceDTO) {
-        Training training = trainingRepository.findById(trainingId)
-                .orElseThrow(() -> new ResourceNotFoundException("Training not found"));
 
-        Ressource3D resource = Ressource3D.builder()
-                .training(training)
-                .url(resourceDTO.getUrl())
-                .description(resourceDTO.getDescription())
-                .format(resourceDTO.getFormat())
-                .build();
-
-        Ressource3D savedResource = ressourceRepository.save(resource);
-        return convertToResourceDTO(savedResource);
-    }
 
     @Override
     public QuizDTO addQuiz(Integer trainingId, QuizDTO quizDTO) {
@@ -113,7 +98,9 @@ public class TrainingServiceImpl  implements TrainingService {
         return Training.builder()
                 .id(trainingDTO.getId())
                 .title(trainingDTO.getTitle())
-                .description(trainingDTO.getDescription())
+                .iconPath(trainingDTO.getIconPath())
+                .urlYtb(trainingDTO.getUrlYtb())
+                .goals(trainingDTO.getGoals())
                 .instructions(trainingDTO.getInstructions())
                 .build();
     }
@@ -121,22 +108,19 @@ public class TrainingServiceImpl  implements TrainingService {
         return TrainingDTO.builder()
                 .id(training.getId())
                 .title(training.getTitle())
-                .description(training.getDescription())
+                .iconPath(training.getIconPath())
+                .goals(training.getGoals())
                 .instructions(training.getInstructions())
-                .resource(training.getRessource()!=null ? convertToResourceDTO(training.getRessource()) : null)
+                .urlYtb(training.getUrlYtb())
+                .courses(training.getCourses().stream()
+                        .map(this::convertToCourseDTO)
+                        .collect(Collectors.toList()))
                 .quizzes(training.getQuizzes().stream()
                         .map(this::convertToQuizDTO)
                         .collect(Collectors.toList()))
                 .build();
     }
-    private Resource3DDTO convertToResourceDTO(Ressource3D resource) {
-        return Resource3DDTO.builder()
-                .id(resource.getId())
-                .url(resource.getUrl())
-                .description(resource.getDescription())
-                .format(resource.getFormat())
-                .build();
-    }
+
 
     private QuizDTO convertToQuizDTO(Quiz quiz) {
         return QuizDTO.builder()
@@ -146,10 +130,17 @@ public class TrainingServiceImpl  implements TrainingService {
                 .correctAnswerIndex(quiz.getCorrectAnswerIndex())
                 .build();
     }
+    private CourseDto convertToCourseDTO(Course course) {
+        return CourseDto.builder()
+                .id(course.getId())
+                .name(course.getName())
+                .urlImage(course.getUrlImage())
+                .build();
+    }
 
     private void updateTrainingFromDTO(Training entity, TrainingDTO dto) {
         entity.setTitle(dto.getTitle());
-        entity.setDescription(dto.getDescription());
+        entity.setGoals(dto.getGoals());
         entity.setInstructions(dto.getInstructions());
     }
 }
