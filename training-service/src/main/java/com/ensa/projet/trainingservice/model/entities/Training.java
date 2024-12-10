@@ -22,18 +22,25 @@ public class Training {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
     private String title;
-    private String description;
+    private String iconPath;
+    private String urlYtb;
+
+    private String goals;
     @ElementCollection
     @CollectionTable(name = "training_instructions",
             joinColumns = @JoinColumn(name = "training_id"))
     @Column(name = "instruction", length = 500)
     @OrderColumn(name = "instruction_order")
     private List<String> instructions;
+
+
     @OneToMany(mappedBy = "training", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<Quiz> quizzes=new ArrayList<>();;
-    @OneToOne(mappedBy = "training", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Ressource3D ressource;
+    private List<Quiz> quizzes=new ArrayList<>();
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true,mappedBy = "training")
+    private List<Course> courses=new ArrayList<>();
+
 
 
 

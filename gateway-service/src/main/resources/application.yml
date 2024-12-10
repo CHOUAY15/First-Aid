@@ -2,7 +2,7 @@ keycloak:
   auth-server-url: http://localhost:8080
   realm: first-aid
   client-id: mobile-first-aid
-  client-secret: YDDuNGOJAd1ghL4fCzDzmsR3HahUtqOx
+  #client-secret: YDDuNGOJAd1ghL4fCzDzmsR3HahUtqOx
   token-uri: ${keycloak.auth-server-url}/realms/${keycloak.realm}/protocol/openid-connect/token
   userinfo-uri: ${keycloak.auth-server-url}/realms/${keycloak.realm}/protocol/openid-connect/userinfo
   redirect-uri: com.firstaid.app:/oauth2callback

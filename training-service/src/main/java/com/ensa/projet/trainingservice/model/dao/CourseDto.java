@@ -6,12 +6,13 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Resource3DDTO {
-    private Integer id;
-    private String url;
-    private String description;
-    private String format;
+@Builder
+
+public class CourseDto {
+
+    private Long id;
+    private String name;
+    private String urlImage;
 }

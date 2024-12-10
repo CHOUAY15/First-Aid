@@ -35,8 +35,8 @@ public class AuthController {
     @Value("${keycloak.client-id}")
     private String clientId;
 
-    @Value("${keycloak.client-secret}")
-    private String clientSecret;
+//    @Value("${keycloak.client-secret}")
+//    private String clientSecret;
 
     @Value("${keycloak.redirect-uri}")
     private String redirectUri;
@@ -66,7 +66,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public Mono<ResponseEntity<AuthResponse>> login(@RequestParam String code) {
-        log.info("Received login request with code: {}", code.substring(0, 10) + "...");
+        log.info("Received login request with code: {}", code);
 
         return exchangeCodeForTokens(code)
                 .doOnNext(tokenResponse -> {
@@ -114,11 +114,11 @@ public class AuthController {
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("grant_type", "authorization_code");
         formData.add("client_id", clientId);
-        formData.add("client_secret", clientSecret);
+//        formData.add("client_secret", clientSecret);
         formData.add("code", code);
         formData.add("redirect_uri", redirectUri);
 
-        log.debug("Exchanging code for tokens with data: {}", formData);
+        log.info("Exchanging code for tokens with data: {}", formData);
 
         return keycloakClient.post()
                 .uri(tokenUri)
@@ -137,7 +137,7 @@ public class AuthController {
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("grant_type", "refresh_token");
         formData.add("client_id", clientId);
-        formData.add("client_secret", clientSecret);
+//        formData.add("client_secret", clientSecret);
         formData.add("refresh_token", refreshToken);
 
         return keycloakClient.post()
