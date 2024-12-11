@@ -15,4 +15,6 @@ public class CourseDto {
     private Long id;
     private String name;
     private String urlImage;
+    private String description;
+
 }

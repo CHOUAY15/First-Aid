@@ -98,6 +98,8 @@ public class AuthController {
 
     @PostMapping("/refresh")
     public Mono<ResponseEntity<AuthResponse>> refresh(@RequestParam String refreshToken) {
+        log.info("Refresh attempt with token: {}", refreshToken); // Logging the refresh token
+
         return refreshAccessToken(refreshToken)
                 .flatMap(tokenResponse -> getUserInfo(tokenResponse)
                         .flatMap(userInfo -> getParticipant(userInfo)
@@ -105,10 +107,11 @@ public class AuthController {
                         ))
                 .map(ResponseEntity::ok)
                 .onErrorResume(e -> {
-                    // Log the error here
+                    log.error("Error during token refresh: {}", e.getMessage(), e); // Logging the error
                     return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
                 });
     }
+
 
     private Mono<TokenResponse> exchangeCodeForTokens(String code) {
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
