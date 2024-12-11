@@ -133,6 +133,7 @@ public class TrainingServiceImpl  implements TrainingService {
     private CourseDto convertToCourseDTO(Course course) {
         return CourseDto.builder()
                 .id(course.getId())
+                .description(course.getDescription())
                 .name(course.getName())
                 .urlImage(course.getUrlImage())
                 .build();

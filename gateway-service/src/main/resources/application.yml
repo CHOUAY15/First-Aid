@@ -13,3 +13,6 @@ spring:
       resourceserver:
         jwt:
           jwk-set-uri: ${keycloak.auth-server-url}/realms/${keycloak.realm}/protocol/openid-connect/certs
+logging:
+  level:
+    org.springframework.security: DEBUG
