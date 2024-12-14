@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
+
 
 @Service
 @Transactional
@@ -50,7 +50,7 @@ public class TrainingServiceImpl  implements TrainingService {
         return trainingRepository.findAll()
                 .stream()
                 .map(this::convertToDto)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
@@ -114,10 +114,10 @@ public class TrainingServiceImpl  implements TrainingService {
                 .urlYtb(training.getUrlYtb())
                 .courses(training.getCourses().stream()
                         .map(this::convertToCourseDTO)
-                        .collect(Collectors.toList()))
+                        .toList())
                 .quizzes(training.getQuizzes().stream()
                         .map(this::convertToQuizDTO)
-                        .collect(Collectors.toList()))
+                        .toList())
                 .build();
     }
 

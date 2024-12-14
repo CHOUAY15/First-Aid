@@ -15,8 +15,8 @@ import java.util.List;
 @Service
 public class QuizServiceImpl implements QuizService {
 
-    @Autowired
-    private QuizRepository quizRepository;
+
+    private final QuizRepository quizRepository;
     public QuizServiceImpl(QuizRepository quizRepository) {
         this.quizRepository = quizRepository;
 
@@ -29,11 +29,6 @@ public class QuizServiceImpl implements QuizService {
         return quizzes.stream().map(
                 this::convertToQuizDTO
         ).toList();
-    }
-
-    @Override
-    public Quiz getQuiz(int id) {
-        return null;
     }
 
     private QuizDTO convertToQuizDTO(Quiz quiz) {

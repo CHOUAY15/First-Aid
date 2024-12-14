@@ -7,7 +7,8 @@ pipeline {
         NEXUS_PROXY = "http://master:9082"
         NEXUS_PRIVATE = "http://master:9083"
         NEXUS_CREDENTIALS_ID = "nexus-credentials"
-        SERVICES = ['config-service', 'discovery-service', 'gateway-service', 'participant-service', 'training-service']
+        // Correctly define SERVICES as a comma-separated string
+        SERVICES = "config-service,discovery-service,gateway-service,participant-service,training-service"
     }
 
     stages {
@@ -16,7 +17,8 @@ pipeline {
                 checkout scm
                 script {
                     def changedFiles = sh(script: "git diff --name-only HEAD~1 HEAD", returnStdout: true).trim()
-                    env.MODIFIED_SERVICES = SERVICES.findAll { service -> changedFiles.contains(service) }
+                    // Split the SERVICES string into a list
+                    env.MODIFIED_SERVICES = SERVICES.split(',').findAll { service -> changedFiles.contains(service) }
                     echo "Services modifiés: ${env.MODIFIED_SERVICES}"
                 }
             }
