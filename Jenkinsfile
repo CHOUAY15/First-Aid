@@ -9,6 +9,8 @@ pipeline {
         NEXUS_CREDENTIALS_ID = "nexus-credentials"
         // Correctly define SERVICES as a comma-separated string
         SERVICES = "config-service,discovery-service,gateway-service,participant-service,training-service"
+        TEST_SERVER_SSH = "chouay@192.168.11.138"
+        TEST_SERVER_CREDENTIALS = "ssh-credentials-id" // Add this credential in Jenkins
     }
 
     stages {
@@ -89,6 +91,32 @@ pipeline {
                                 """
                             }
                         }
+                    }
+                }
+            }
+        }
+        stage('Deploy to Test Server') {
+            when {
+                expression { env.GIT_BRANCH == BRANCH_DEV }
+            }
+            steps {
+                script {
+                    def envName = "dev"
+                    def modifiedServicesList = env.MODIFIED_SERVICES ? env.MODIFIED_SERVICES.split(',') : []
+                    def version = modifiedServicesList ? getEnvVersion(modifiedServicesList[0], envName) : 'latest'
+
+                    withCredentials([sshUserPrivateKey(credentialsId: 'test-server-credentials',
+                            keyFileVariable: 'SSH_KEY')]) {
+                        sh """
+                    ssh -i ${SSH_KEY} ${TEST_SERVER_SSH} '
+                        cd /home/chouay/first-aid/
+                        export NEXUS_PRIVATE=${NEXUS_PRIVATE}
+                        export VERSION=${version}
+                        docker-compose down || true
+                        docker-compose pull
+                        docker-compose up -d
+                    '
+                """
                     }
                 }
             }
