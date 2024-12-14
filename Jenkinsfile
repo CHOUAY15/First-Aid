@@ -17,9 +17,11 @@ pipeline {
                 checkout scm
                 script {
                     def changedFiles = sh(script: "git diff --name-only HEAD~1 HEAD", returnStdout: true).trim()
-                    // Split the SERVICES string into a list
-                    env.MODIFIED_SERVICES = SERVICES.split(',').findAll { service -> changedFiles.contains(service) }
-                    echo "Services modifiés: ${env.MODIFIED_SERVICES}"
+                    // Store modified services as a comma-separated string instead of a list
+                    env.MODIFIED_SERVICES = SERVICES.split(',').findAll { service ->
+                        changedFiles.contains(service)
+                    }.join(',')
+                    echo "Modified services: ${env.MODIFIED_SERVICES}"
                 }
             }
         }
@@ -67,52 +69,44 @@ pipeline {
         stage('Docker Build and Push to Nexus') {
             steps {
                 script {
-                    envName = "dev"
-                    if (env.GIT_BRANCH == BRANCH_PROD) {
-                        envName = "prod"
-                    }
+                    def envName = env.GIT_BRANCH == BRANCH_PROD ? "prod" : "dev"
 
-                    // Build and push only the modified services to Nexus
-                    env.MODIFIED_SERVICES.each { service ->
-                        def version = getEnvVersion(service, envName)
-                        echo "Building Docker image for ${service} with version ${version}"
+                    // Split the string back into an array when needed
+                    def modifiedServicesList = env.MODIFIED_SERVICES ? env.MODIFIED_SERVICES.split(',') : []
 
-                        withCredentials([usernamePassword(credentialsId: "${NEXUS_CREDENTIALS_ID}", usernameVariable: 'USER', passwordVariable: 'PASSWORD')]) {
-                            sh 'echo $PASSWORD | docker login -u $USER --password-stdin $NEXUS_PRIVATE'
-                            sh "docker build -t ${NEXUS_PRIVATE}/${service}:${version} ./${service}"
-                            sh "docker push ${NEXUS_PRIVATE}/${service}:${version}"
+                    modifiedServicesList.each { service ->
+                        dir(service) {  // Change to service directory
+                            def version = getEnvVersion(service, envName)
+                            echo "Building Docker image for ${service} with version ${version}"
+
+                            withCredentials([usernamePassword(credentialsId: "${NEXUS_CREDENTIALS_ID}",
+                                    usernameVariable: 'USER',
+                                    passwordVariable: 'PASSWORD')]) {
+                                sh """
+                                    echo \$PASSWORD | docker login -u \$USER --password-stdin ${NEXUS_PRIVATE}
+                                    docker build -t ${NEXUS_PRIVATE}/${service}:${version} .
+                                    docker push ${NEXUS_PRIVATE}/${service}:${version}
+                                """
+                            }
                         }
                     }
                 }
-
             }
         }
-
-
     }
 }
 def getEnvVersion(service, envName) {
-    // Read Maven POM file to get the version
-    def pom = readMavenPom file: 'pom.xml'
-    // Get the current development version from POM
-    def artifactVersion = "${pom.version}"
+    dir(service) {  // Change to service directory to read the correct pom.xml
+        def pom = readMavenPom file: 'pom.xml'
+        def artifactVersion = pom.version
+        def gitCommit = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
 
-    // Get the current git commit hash
-    def gitCommit = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
+        def versionNumber = gitCommit ?
+                "${artifactVersion}-${envName}.${env.BUILD_NUMBER}.${gitCommit.take(8)}" :
+                "${artifactVersion}-${envName}.${env.BUILD_NUMBER}"
 
-    // Construct version number based on git commit and environment
-    def versionNumber
-    if (gitCommit == null || gitCommit.isEmpty()) {
-        // If no commit hash found, just use the environment and build number
-        versionNumber = "${artifactVersion}-${envName}.${env.BUILD_NUMBER}"
-    } else {
-        // Use shortened git commit hash if available
-        versionNumber = "${artifactVersion}-${envName}.${env.BUILD_NUMBER}.${gitCommit.take(8)}"
+        echo "Build version for service ${service}: ${versionNumber}"
+        return versionNumber
     }
-
-    // Print the version number for debugging
-    echo "Build version for service ${service}: ${versionNumber}"
-
-    return versionNumber
 }
 
