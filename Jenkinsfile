@@ -45,5 +45,48 @@ pipeline {
                 }
             }
         }
+        stage('Maven Build and Package') {
+            steps {
+                script {
+                    // Build and package the project, skipping tests to optimize the process
+                    sh 'mvn clean package -DskipTests'
+                }
+            }
+            post {
+                success {
+                    // Archive the generated .jar files for later use (deployment or inspection)
+                    archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true
+                }
+                failure {
+                    // Handle failures if necessary (e.g., notifying the team)
+                    echo 'Maven build failed'
+                }
+            }
+        }
+
+        stage('Docker Build and Push to Nexus') {
+            steps {
+                script {
+                    envName = "dev"
+                    if (env.GIT_BRANCH == BRANCH_PROD) {
+                        envName = "prod"
+                    }
+
+                    // Build and push only the modified services to Nexus
+                    env.MODIFIED_SERVICES.each { service ->
+                        def version = getEnvVersion(service, envName)
+                        echo "Building Docker image for ${service} with version ${version}"
+
+                        withCredentials([usernamePassword(credentialsId: "${NEXUS_CREDENTIALS_ID}", usernameVariable: 'USER', passwordVariable: 'PASSWORD')]) {
+                            sh 'echo $PASSWORD | docker login -u $USER --password-stdin $NEXUS_PRIVATE'
+                            sh "docker build -t ${NEXUS_PRIVATE}/${service}:${version} ./${service}"
+                            sh "docker push ${NEXUS_PRIVATE}/${service}:${version}"
+                        }
+                    }
+                }
+            }
+        }
+
+
     }
 }
