@@ -26,6 +26,10 @@
         <sonar.projectName>first-aid</sonar.projectName>
         <sonar.token>sqa_111c5c9a5a0fe47d2da017aabc2c450d81f9099d</sonar.token>
         <sonar.java.source>17</sonar.java.source>
+        <sonar.moduleKey>${project.artifactId}</sonar.moduleKey>
+        <sonar.coverage.jacoco.xmlReportPaths>
+            ${project.build.directory}/site/jacoco/jacoco.xml
+        </sonar.coverage.jacoco.xmlReportPaths>
     </properties>
 
     <modules>
@@ -35,6 +39,7 @@
         <module>participant-service</module>
         <module>training-service</module>
     </modules>
+
     <build>
         <pluginManagement>
             <plugins>
