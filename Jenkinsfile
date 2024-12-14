@@ -84,9 +84,35 @@ pipeline {
                         }
                     }
                 }
+
             }
         }
 
 
     }
 }
+def getEnvVersion(service, envName) {
+    // Read Maven POM file to get the version
+    def pom = readMavenPom file: 'pom.xml'
+    // Get the current development version from POM
+    def artifactVersion = "${pom.version}"
+
+    // Get the current git commit hash
+    def gitCommit = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
+
+    // Construct version number based on git commit and environment
+    def versionNumber
+    if (gitCommit == null || gitCommit.isEmpty()) {
+        // If no commit hash found, just use the environment and build number
+        versionNumber = "${artifactVersion}-${envName}.${env.BUILD_NUMBER}"
+    } else {
+        // Use shortened git commit hash if available
+        versionNumber = "${artifactVersion}-${envName}.${env.BUILD_NUMBER}.${gitCommit.take(8)}"
+    }
+
+    // Print the version number for debugging
+    echo "Build version for service ${service}: ${versionNumber}"
+
+    return versionNumber
+}
+
