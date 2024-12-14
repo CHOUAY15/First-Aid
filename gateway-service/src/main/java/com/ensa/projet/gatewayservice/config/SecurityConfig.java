@@ -22,7 +22,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
+
 
 @Configuration
 @EnableWebFluxSecurity
@@ -67,10 +67,11 @@ public class SecurityConfig {
                         Object rolesObj = access.get("roles");
                         if (rolesObj instanceof List) {
                             return ((List<?>) rolesObj).stream()
-                                    .filter(role -> role instanceof String)
+                                    .filter(String.class::isInstance)
                                     .map(Object::toString)
-                                    .collect(Collectors.toList());
+                                    .toList();
                         }
+
                         return Collections.<String>emptyList();
                     })
                     .orElse(Collections.emptyList());

@@ -12,7 +12,6 @@ public interface TrainingService {
      TrainingDTO getTrainingById(Integer id);
      TrainingDTO updateTraining(Integer id, TrainingDTO trainingDTO);
      void deleteTraining(Integer id);
-
      QuizDTO addQuiz(Integer trainingId, QuizDTO quizDTO);
 
 

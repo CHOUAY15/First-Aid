@@ -35,9 +35,6 @@ public class AuthController {
     @Value("${keycloak.client-id}")
     private String clientId;
 
-//    @Value("${keycloak.client-secret}")
-//    private String clientSecret;
-
     @Value("${keycloak.redirect-uri}")
     private String redirectUri;
 
@@ -58,10 +55,8 @@ public class AuthController {
                                 .map(participant -> createAuthResponse(tokenResponse, participant))
                         ))
                 .map(ResponseEntity::ok)
-                .onErrorResume(e -> {
-                    // Log the error here
-                    return Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST).build());
-                });
+                .onErrorResume(e -> Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST).build()));
+
     }
 
     @PostMapping("/login")
@@ -117,7 +112,6 @@ public class AuthController {
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("grant_type", "authorization_code");
         formData.add("client_id", clientId);
-//        formData.add("client_secret", clientSecret);
         formData.add("code", code);
         formData.add("redirect_uri", redirectUri);
 
@@ -140,7 +134,6 @@ public class AuthController {
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("grant_type", "refresh_token");
         formData.add("client_id", clientId);
-//        formData.add("client_secret", clientSecret);
         formData.add("refresh_token", refreshToken);
 
         return keycloakClient.post()

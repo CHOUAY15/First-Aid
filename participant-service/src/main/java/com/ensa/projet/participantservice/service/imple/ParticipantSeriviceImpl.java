@@ -3,7 +3,7 @@ package com.ensa.projet.participantservice.service.imple;
 import com.ensa.projet.participantservice.client.TrainingServiceClient;
 import com.ensa.projet.participantservice.dto.KeycloakUserInfo;
 import com.ensa.projet.participantservice.dto.QuizDTO;
-import com.ensa.projet.participantservice.dto.TrainingDTO;
+
 import com.ensa.projet.participantservice.entities.*;
 import com.ensa.projet.participantservice.exception.ResourceNotFoundException;
 import com.ensa.projet.participantservice.repository.CertificationRepository;
@@ -75,7 +75,7 @@ public class ParticipantSeriviceImpl implements ParticipantService {
         Participant participant = participantRepository.findById(participantId)
                 .orElseThrow(()->new ResourceNotFoundException("Participant not found"));
 
-        TrainingDTO trainingDTO = trainingService.getTraining(trainingId);
+
 
         TrainingProgress trainingProgress = TrainingProgress.builder()
                 .trainingId(trainingId)
