@@ -9,8 +9,9 @@ pipeline {
         NEXUS_CREDENTIALS_ID = "nexus-credentials"
         // Correctly define SERVICES as a comma-separated string
         SERVICES = "config-service,discovery-service,gateway-service,participant-service,training-service"
-        TEST_SERVER_SSH = "chouay@192.168.11.138"
-        TEST_SERVER_CREDENTIALS = "ssh-credentials-id" // Add this credential in Jenkins
+        TEST_SERVER = '192.168.11.138'
+        TEST_SERVER_USER = 'chouay'
+        PROJECT_PATH = '/home/chouay/first-aid' // Add this credential in Jenkins
     }
 
     stages {
@@ -96,30 +97,39 @@ pipeline {
             }
         }
         stage('Deploy to Test Server') {
-            when {
-                expression { env.GIT_BRANCH == BRANCH_DEV }
-            }
             steps {
-                script {
-                    def envName = "dev"
-                    def modifiedServicesList = env.MODIFIED_SERVICES ? env.MODIFIED_SERVICES.split(',') : []
-                    def version = modifiedServicesList ? getEnvVersion(modifiedServicesList[0], envName) : 'latest'
+                sshagent(credentials: ['ssh-credentials-id']) {
+                    script {
+                        // Ensure SSH directory exists
+                        sh '[ ! -d ~/.ssh ] && mkdir -m 0700 ~/.ssh || true'
 
-                    withCredentials([sshUserPrivateKey(credentialsId: 'test-server-credentials',
-                            keyFileVariable: 'SSH_KEY')]) {
+                        // Add host key to known_hosts if not already present
+                        sh "ssh-keyscan -t rsa,dsa ${TEST_SERVER} >> ~/.ssh/known_hosts"
+
+                        // Deploy using docker-compose
                         sh """
-                    ssh -i ${SSH_KEY} ${TEST_SERVER_SSH} '
-                        cd /home/chouay/first-aid/
-                        export NEXUS_PRIVATE=${NEXUS_PRIVATE}
-                        export VERSION=${version}
-                        docker-compose down || true
-                        docker-compose pull
-                        docker-compose up -d
-                    '
-                """
+                            ssh ${TEST_SERVER_USER}@${TEST_SERVER} '
+                                cd ${PROJECT_PATH}
+                                export NEXUS_PRIVATE=${NEXUS_PRIVATE}
+                                export VERSION=latest
+                                docker-compose down
+                                docker-compose pull
+                                docker-compose up -d
+                                docker system prune -f
+                            '
+                        """
                     }
                 }
             }
+        }
+    }
+
+    post {
+        success {
+            echo 'Deployment successful!'
+        }
+        failure {
+            echo 'Deployment failed!'
         }
     }
 }
