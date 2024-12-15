@@ -98,13 +98,11 @@ pipeline {
 
                         // First, setup authentication on test server
                         withCredentials([usernamePassword(credentialsId: "${NEXUS_CREDENTIALS_ID}",
-                                usernameVariable: 'NEXUS_USER',
-                                passwordVariable: 'NEXUS_PASS')]) {
-                            sh """
-                        ssh -o StrictHostKeyChecking=no ${TEST_SERVER_USER}@${TEST_SERVER} '
-                            echo "${NEXUS_PASS}" | docker login ${NEXUS_PRIVATE} -u "${NEXUS_USER}" --password-stdin
-                        '
-                    """
+                                usernameVariable: 'USER',
+                                passwordVariable: 'PASSWORD')]) {
+                            sh '''
+        echo $PASSWORD | docker login -u $USER --password-stdin ${NEXUS_DOCKER_REGISTRY}
+    '''
                         }
 
                         modifiedServicesList.each { service ->
