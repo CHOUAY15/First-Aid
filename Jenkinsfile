@@ -92,93 +92,75 @@ pipeline {
         stage('Deploy to Test Server') {
             steps {
                 script {
-                    // First test connectivity
-                    echo "Testing connectivity to ${TEST_SERVER}"
-
-                    try {
-                        sh "ping -c 1 ${TEST_SERVER}"
-                    } catch (Exception e) {
-                        error "Cannot ping ${TEST_SERVER}. Error: ${e.message}"
-                    }
-
-                    // Test SSH connection
                     sshagent(credentials: ['ssh-credentials-id']) {
-                        try {
-                            sh """
-                        ssh -o StrictHostKeyChecking=no ${TEST_SERVER_USER}@${TEST_SERVER} 'echo "SSH Connection successful"'
-                    """
-                        } catch (Exception e) {
-                            error "SSH connection failed. Error: ${e.message}"
-                        }
-
-                        // If we get here, connectivity is working
-                        echo "Connectivity tests passed. Proceeding with deployment..."
-
                         def envName = env.GIT_BRANCH == BRANCH_PROD ? "prod" : "test"
                         def modifiedServicesList = env.MODIFIED_SERVICES ? env.MODIFIED_SERVICES.split(',') : []
+
+                        // First, setup authentication on test server
+                        withCredentials([usernamePassword(credentialsId: "${NEXUS_CREDENTIALS_ID}",
+                                usernameVariable: 'NEXUS_USER',
+                                passwordVariable: 'NEXUS_PASS')]) {
+                            sh """
+                        ssh -o StrictHostKeyChecking=no ${TEST_SERVER_USER}@${TEST_SERVER} '
+                            echo "${NEXUS_PASS}" | docker login ${NEXUS_PRIVATE} -u "${NEXUS_USER}" --password-stdin
+                        '
+                    """
+                        }
 
                         modifiedServicesList.each { service ->
                             def version = getEnvVersion(service, envName)
 
-                            // Debug information
-                            echo "Deploying service: ${service}"
-                            echo "Version: ${version}"
-                            echo "Target directory: ${PROJECT_PATH}"
-
                             sh """
                         ssh -o StrictHostKeyChecking=no ${TEST_SERVER_USER}@${TEST_SERVER} '
-                            echo "Current directory: \$(pwd)"
-                            echo "Checking if target directory exists..."
-                            if [ ! -d "${PROJECT_PATH}" ]; then
-                                echo "Directory ${PROJECT_PATH} does not exist!"
-                                exit 1
-                            fi
-                            
-                            echo "Changing to project directory..."
+                            set -x
                             cd ${PROJECT_PATH}
                             
-                            echo "Creating/Updating .env file..."
+                            # Create .env file with correct syntax
                             echo "NEXUS_PRIVATE=${NEXUS_PRIVATE}" > .env
                             echo "VERSION=${version}" >> .env
                             
-                            echo "Checking docker status..."
-                            docker info
+                            # Debug: Show .env contents
+                            echo "Contents of .env:"
+                            cat .env
                             
-                            echo "Checking if docker-compose file exists..."
-                            if [ ! -f "docker-compose.yml" ]; then
-                                echo "docker-compose.yml not found!"
-                                exit 1
-                            fi
-                            
-                            echo "Docker compose version:"
-                            docker-compose version
-                            
-                            echo "Stopping existing containers..."
+                            # Stop existing containers
                             docker-compose down || true
                             
-                            echo "Pulling new images..."
-                            docker-compose pull || true
+                            # Remove existing containers and volumes
+                            docker-compose rm -f || true
                             
-                            echo "Starting containers..."
+                            # Pull images with explicit failure checking
+                            docker-compose pull || exit 1
+                            
+                            # Start containers in foreground first to catch potential errors
+                            docker-compose up --no-start || exit 1
+                            
+                            # Start containers in background
                             docker-compose up -d
                             
+                            # Wait a bit and check status
+                            sleep 10
+                            
                             echo "Container status:"
-                            docker ps
+                            docker ps -a
                             
                             echo "Docker compose logs:"
                             docker-compose logs
+                            
+                            # Verify all services are running
+                            RUNNING_CONTAINERS=\$(docker-compose ps --services --filter "status=running" | wc -l)
+                            TOTAL_SERVICES=\$(docker-compose config --services | wc -l)
+                            
+                            echo "Running containers: \$RUNNING_CONTAINERS out of \$TOTAL_SERVICES"
+                            
+                            if [ "\$RUNNING_CONTAINERS" -lt "\$TOTAL_SERVICES" ]; then
+                                echo "Not all services are running!"
+                                exit 1
+                            fi
                         '
                     """
                         }
                     }
-                }
-            }
-            post {
-                failure {
-                    echo "Deployment stage failed. Check the logs above for details."
-                }
-                success {
-                    echo "Deployment stage completed successfully."
                 }
             }
         }
