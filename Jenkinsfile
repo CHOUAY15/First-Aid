@@ -92,25 +92,24 @@ pipeline {
         stage('Deploy to Test Server') {
             steps {
                 script {
-                    sshagent(credentials: ['ssh-credentials-id']) {
+                    withCredentials([
+                            sshUserPrivateKey(credentialsId: 'ssh-credentials-id', keyFileVariable: 'SSH_KEY'),
+                            usernamePassword(credentialsId: "${NEXUS_CREDENTIALS_ID}", usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')
+                    ]) {
                         def envName = env.GIT_BRANCH == BRANCH_PROD ? "prod" : "test"
                         def modifiedServicesList = env.MODIFIED_SERVICES ? env.MODIFIED_SERVICES.split(',') : []
 
-                        // First, setup authentication on test server
-                        withCredentials([usernamePassword(credentialsId: "${NEXUS_CREDENTIALS_ID}",
-                                usernameVariable: 'USER',
-                                passwordVariable: 'PASSWORD')]) {
-                            sh """
-                        ssh -o StrictHostKeyChecking=no ${TEST_SERVER_USER}@${TEST_SERVER} \
-                        "docker login -u ${USER} -p ${PASSWORD} ${NEXUS_PRIVATE}"
-                    """
-                        }
+                        // Setup authentication on test server with explicit variables
+                        sh """
+                    ssh -o StrictHostKeyChecking=no -i ${SSH_KEY} ${TEST_SERVER_USER}@${TEST_SERVER} \
+                    "docker login -u ${NEXUS_USER} -p ${NEXUS_PASS} ${NEXUS_PRIVATE}"
+                """
 
                         modifiedServicesList.each { service ->
                             def version = getEnvVersion(service, envName)
 
                             sh """
-                        ssh -o StrictHostKeyChecking=no ${TEST_SERVER_USER}@${TEST_SERVER} '
+                        ssh -o StrictHostKeyChecking=no -i ${SSH_KEY} ${TEST_SERVER_USER}@${TEST_SERVER} '
                             set -x
                             cd ${PROJECT_PATH}
                             
@@ -119,34 +118,19 @@ pipeline {
                             echo "VERSION=${version}" >> .env
                             
                             # Debug: Show .env contents
-                            echo "Contents of .env:"
                             cat .env
                             
-                            # Stop existing containers
                             docker-compose down || true
-                            
-                            # Remove existing containers and volumes
                             docker-compose rm -f || true
-                            
-                            # Pull images with explicit failure checking
                             docker-compose pull || exit 1
-                            
-                            # Start containers in foreground first to catch potential errors
-                            docker-compose up --no-start || exit 1
-                            
-                            # Start containers in background
                             docker-compose up -d
                             
-                            # Wait a bit and check status
+                            # Vérification du statut
                             sleep 10
-                            
-                            echo "Container status:"
                             docker ps -a
-                            
-                            echo "Docker compose logs:"
                             docker-compose logs
                             
-                            # Verify all services are running
+                            # Vérification des services
                             RUNNING_CONTAINERS=\$(docker-compose ps --services --filter "status=running" | wc -l)
                             TOTAL_SERVICES=\$(docker-compose config --services | wc -l)
                             
