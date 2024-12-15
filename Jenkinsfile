@@ -92,22 +92,28 @@ pipeline {
         stage('Deploy to Test Server') {
             steps {
                 script {
-                    envName = "test"
-                    if (env.GIT_BRANCH == BRANCH_PROD) {
-                        envName = "prod"
-                    }
+                    def envName = env.GIT_BRANCH == BRANCH_PROD ? "prod" : "test"
+                    def modifiedServicesList = env.MODIFIED_SERVICES ? env.MODIFIED_SERVICES.split(',') : []
 
-                    env.MODIFIED_SERVICES.each { service ->
+                    modifiedServicesList.each { service ->
                         def version = getEnvVersion(service, envName)
                         sshagent(credentials: ['ssh-credentials-id']) {
+                            // Create .env file with required variables
                             sh """
-                        ssh -o StrictHostKeyChecking=no -i ${SSH_KEY} ${TEST_SERVER_SSH} '
-                            cd /home/chouay/first-aid/
-                            export NEXUS_PRIVATE=${NEXUS_PRIVATE}
-                            export VERSION=${version}
+                        ssh -o StrictHostKeyChecking=no ${TEST_SERVER_USER}@${TEST_SERVER} '
+                            cd ${PROJECT_PATH}
+                            echo "NEXUS_PRIVATE=${NEXUS_PRIVATE}" > .env
+                            echo "VERSION=${version}" >> .env
+                            echo "Stopping existing containers..."
                             docker-compose down || true
-                            docker-compose pull
+                            echo "Pulling new images..."
+                            docker-compose pull || true
+                            echo "Starting containers..."
                             docker-compose up -d
+                            echo "Checking container status..."
+                            docker ps
+                            echo "Checking docker-compose logs..."
+                            docker-compose logs
                         '
                     """
                         }
