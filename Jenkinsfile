@@ -102,7 +102,7 @@ pipeline {
                                 passwordVariable: 'PASSWORD')]) {
                             sh """
                         ssh -o StrictHostKeyChecking=no ${TEST_SERVER_USER}@${TEST_SERVER} '
-                             echo \\$PASSWORD | docker login -u \\$USER --password-stdin ${NEXUS_PRIVATE}
+                             echo \$PASSWORD | docker login -u \$USER --password-stdin ${NEXUS_PRIVATE}
                         '
                     """
                         }
