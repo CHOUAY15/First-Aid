@@ -100,10 +100,10 @@ pipeline {
                                 usernameVariable: 'NEXUS_USERNAME',
                                 passwordVariable: 'NEXUS_PASSWORD')]) {
 
-                            // Use echo to pipe the password to docker login
+                            // Simpler docker login approach
                             sh """
                         ssh -o StrictHostKeyChecking=no ${TEST_SERVER_USER}@${TEST_SERVER} \
-                        'echo "\${NEXUS_PASSWORD}" | docker login --username "\${NEXUS_USERNAME}" --password-stdin ${NEXUS_PRIVATE}'
+                        'docker login ${NEXUS_PRIVATE} --username "\${NEXUS_USERNAME}" --password "\${NEXUS_PASSWORD}"'
                     """
 
                             modifiedServicesList.each { service ->
@@ -114,8 +114,13 @@ pipeline {
                                 set -x
                                 cd ${PROJECT_PATH}
                                 
+                                # Create .env file with correct syntax
                                 echo "NEXUS_PRIVATE=${NEXUS_PRIVATE}" > .env
                                 echo "VERSION=${version}" >> .env
+                                
+                                # Debug: Show .env contents
+                                echo "Contents of .env:"
+                                cat .env
                                 
                                 docker-compose down || true
                                 docker-compose rm -f || true
@@ -125,11 +130,16 @@ pipeline {
                                 
                                 sleep 10
                                 
+                                echo "Container status:"
                                 docker ps -a
+                                
+                                echo "Docker compose logs:"
                                 docker-compose logs
                                 
                                 RUNNING_CONTAINERS=\$(docker-compose ps --services --filter "status=running" | wc -l)
                                 TOTAL_SERVICES=\$(docker-compose config --services | wc -l)
+                                
+                                echo "Running containers: \$RUNNING_CONTAINERS out of \$TOTAL_SERVICES"
                                 
                                 if [ "\$RUNNING_CONTAINERS" -lt "\$TOTAL_SERVICES" ]; then
                                     echo "Not all services are running!"
