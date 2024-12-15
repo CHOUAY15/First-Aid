@@ -100,10 +100,10 @@ pipeline {
                                 usernameVariable: 'NEXUS_USERNAME',
                                 passwordVariable: 'NEXUS_PASSWORD')]) {
 
-                            // Use triple quotes for multiline strings and proper variable escaping
+                            // Use echo to pipe the password to docker login
                             sh """
                         ssh -o StrictHostKeyChecking=no ${TEST_SERVER_USER}@${TEST_SERVER} \
-                        'docker login -u "\${NEXUS_USERNAME}" -p "\${NEXUS_PASSWORD}" ${NEXUS_PRIVATE}'
+                        'echo "\${NEXUS_PASSWORD}" | docker login --username "\${NEXUS_USERNAME}" --password-stdin ${NEXUS_PRIVATE}'
                     """
 
                             modifiedServicesList.each { service ->
@@ -143,7 +143,6 @@ pipeline {
                 }
             }
         }
-
 
     }
 
