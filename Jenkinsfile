@@ -100,9 +100,11 @@ pipeline {
                         withCredentials([usernamePassword(credentialsId: "${NEXUS_CREDENTIALS_ID}",
                                 usernameVariable: 'USER',
                                 passwordVariable: 'PASSWORD')]) {
-                            sh '''
-        echo $PASSWORD | docker login -u $USER --password-stdin ${NEXUS_DOCKER_REGISTRY}
-    '''
+                            sh """
+                        ssh -o StrictHostKeyChecking=no ${TEST_SERVER_USER}@${TEST_SERVER} '
+                             echo \\$PASSWORD | docker login -u \\$USER --password-stdin ${NEXUS_PRIVATE}
+                        '
+                    """
                         }
 
                         modifiedServicesList.each { service ->
