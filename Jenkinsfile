@@ -98,12 +98,13 @@ pipeline {
 
                         // Modification de la partie authentification
                         withCredentials([usernamePassword(credentialsId: "${NEXUS_CREDENTIALS_ID}",
-                                passwordVariable: 'NEXUS_PASSWORD',
-                                usernameVariable: 'NEXUS_USERNAME')]) {
-                            // Setup Docker login on test server with explicit credential variables
+                                usernameVariable: 'NEXUS_USERNAME',
+                                passwordVariable: 'NEXUS_PASSWORD')]) {
+
+                            // Ensure all credential variables are used with proper scoping
                             sh """
                         ssh -o StrictHostKeyChecking=no ${TEST_SERVER_USER}@${TEST_SERVER} \
-                        'docker login -u "${NEXUS_USERNAME}" -p "${NEXUS_PASSWORD}" ${NEXUS_PRIVATE}'
+                        "docker login -u '${NEXUS_USERNAME}' -p '${NEXUS_PASSWORD}' ${NEXUS_PRIVATE}"
                     """
 
                             modifiedServicesList.each { service ->
