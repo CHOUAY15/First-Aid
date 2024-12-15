@@ -92,32 +92,93 @@ pipeline {
         stage('Deploy to Test Server') {
             steps {
                 script {
-                    def envName = env.GIT_BRANCH == BRANCH_PROD ? "prod" : "test"
-                    def modifiedServicesList = env.MODIFIED_SERVICES ? env.MODIFIED_SERVICES.split(',') : []
+                    // First test connectivity
+                    echo "Testing connectivity to ${TEST_SERVER}"
 
-                    modifiedServicesList.each { service ->
-                        def version = getEnvVersion(service, envName)
-                        sshagent(credentials: ['ssh-credentials-id']) {
-                            // Create .env file with required variables
+                    try {
+                        sh "ping -c 1 ${TEST_SERVER}"
+                    } catch (Exception e) {
+                        error "Cannot ping ${TEST_SERVER}. Error: ${e.message}"
+                    }
+
+                    // Test SSH connection
+                    sshagent(credentials: ['ssh-credentials-id']) {
+                        try {
+                            sh """
+                        ssh -o StrictHostKeyChecking=no ${TEST_SERVER_USER}@${TEST_SERVER} 'echo "SSH Connection successful"'
+                    """
+                        } catch (Exception e) {
+                            error "SSH connection failed. Error: ${e.message}"
+                        }
+
+                        // If we get here, connectivity is working
+                        echo "Connectivity tests passed. Proceeding with deployment..."
+
+                        def envName = env.GIT_BRANCH == BRANCH_PROD ? "prod" : "test"
+                        def modifiedServicesList = env.MODIFIED_SERVICES ? env.MODIFIED_SERVICES.split(',') : []
+
+                        modifiedServicesList.each { service ->
+                            def version = getEnvVersion(service, envName)
+
+                            // Debug information
+                            echo "Deploying service: ${service}"
+                            echo "Version: ${version}"
+                            echo "Target directory: ${PROJECT_PATH}"
+
                             sh """
                         ssh -o StrictHostKeyChecking=no ${TEST_SERVER_USER}@${TEST_SERVER} '
+                            echo "Current directory: \$(pwd)"
+                            echo "Checking if target directory exists..."
+                            if [ ! -d "${PROJECT_PATH}" ]; then
+                                echo "Directory ${PROJECT_PATH} does not exist!"
+                                exit 1
+                            fi
+                            
+                            echo "Changing to project directory..."
                             cd ${PROJECT_PATH}
+                            
+                            echo "Creating/Updating .env file..."
                             echo "NEXUS_PRIVATE=${NEXUS_PRIVATE}" > .env
                             echo "VERSION=${version}" >> .env
+                            
+                            echo "Checking docker status..."
+                            docker info
+                            
+                            echo "Checking if docker-compose file exists..."
+                            if [ ! -f "docker-compose.yml" ]; then
+                                echo "docker-compose.yml not found!"
+                                exit 1
+                            fi
+                            
+                            echo "Docker compose version:"
+                            docker-compose version
+                            
                             echo "Stopping existing containers..."
                             docker-compose down || true
+                            
                             echo "Pulling new images..."
                             docker-compose pull || true
+                            
                             echo "Starting containers..."
                             docker-compose up -d
-                            echo "Checking container status..."
+                            
+                            echo "Container status:"
                             docker ps
-                            echo "Checking docker-compose logs..."
+                            
+                            echo "Docker compose logs:"
                             docker-compose logs
                         '
                     """
                         }
                     }
+                }
+            }
+            post {
+                failure {
+                    echo "Deployment stage failed. Check the logs above for details."
+                }
+                success {
+                    echo "Deployment stage completed successfully."
                 }
             }
         }
