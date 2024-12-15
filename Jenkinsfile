@@ -92,56 +92,62 @@ pipeline {
         stage('Deploy to Test Server') {
             steps {
                 script {
-                    withCredentials([
-                            sshUserPrivateKey(credentialsId: 'ssh-credentials-id', keyFileVariable: 'SSH_KEY'),
-                            usernamePassword(credentialsId: "${NEXUS_CREDENTIALS_ID}", usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')
-                    ]) {
+                    sshagent(credentials: ['ssh-credentials-id']) {
                         def envName = env.GIT_BRANCH == BRANCH_PROD ? "prod" : "test"
                         def modifiedServicesList = env.MODIFIED_SERVICES ? env.MODIFIED_SERVICES.split(',') : []
 
-                        // Setup authentication on test server with explicit variables
-                        sh """
-                    ssh -o StrictHostKeyChecking=no -i ${SSH_KEY} ${TEST_SERVER_USER}@${TEST_SERVER} \
-                    "docker login -u ${NEXUS_USER} -p ${NEXUS_PASS} ${NEXUS_PRIVATE}"
-                """
-
-                        modifiedServicesList.each { service ->
-                            def version = getEnvVersion(service, envName)
-
+                        // Modification de la partie authentification
+                        withCredentials([usernamePassword(credentialsId: "${NEXUS_CREDENTIALS_ID}",
+                                passwordVariable: 'NEXUS_PASSWORD',
+                                usernameVariable: 'NEXUS_USERNAME')]) {
+                            // Setup Docker login on test server with explicit credential variables
                             sh """
-                        ssh -o StrictHostKeyChecking=no -i ${SSH_KEY} ${TEST_SERVER_USER}@${TEST_SERVER} '
-                            set -x
-                            cd ${PROJECT_PATH}
-                            
-                            # Create .env file with correct syntax
-                            echo "NEXUS_PRIVATE=${NEXUS_PRIVATE}" > .env
-                            echo "VERSION=${version}" >> .env
-                            
-                            # Debug: Show .env contents
-                            cat .env
-                            
-                            docker-compose down || true
-                            docker-compose rm -f || true
-                            docker-compose pull || exit 1
-                            docker-compose up -d
-                            
-                            # Vérification du statut
-                            sleep 10
-                            docker ps -a
-                            docker-compose logs
-                            
-                            # Vérification des services
-                            RUNNING_CONTAINERS=\$(docker-compose ps --services --filter "status=running" | wc -l)
-                            TOTAL_SERVICES=\$(docker-compose config --services | wc -l)
-                            
-                            echo "Running containers: \$RUNNING_CONTAINERS out of \$TOTAL_SERVICES"
-                            
-                            if [ "\$RUNNING_CONTAINERS" -lt "\$TOTAL_SERVICES" ]; then
-                                echo "Not all services are running!"
-                                exit 1
-                            fi
-                        '
+                        ssh -o StrictHostKeyChecking=no ${TEST_SERVER_USER}@${TEST_SERVER} \
+                        'docker login -u "${NEXUS_USERNAME}" -p "${NEXUS_PASSWORD}" ${NEXUS_PRIVATE}'
                     """
+
+                            modifiedServicesList.each { service ->
+                                def version = getEnvVersion(service, envName)
+
+                                sh """
+                            ssh -o StrictHostKeyChecking=no ${TEST_SERVER_USER}@${TEST_SERVER} '
+                                set -x
+                                cd ${PROJECT_PATH}
+                                
+                                # Create .env file with correct syntax
+                                echo "NEXUS_PRIVATE=${NEXUS_PRIVATE}" > .env
+                                echo "VERSION=${version}" >> .env
+                                
+                                # Debug: Show .env contents
+                                echo "Contents of .env:"
+                                cat .env
+                                
+                                docker-compose down || true
+                                docker-compose rm -f || true
+                                docker-compose pull || exit 1
+                                docker-compose up --no-start || exit 1
+                                docker-compose up -d
+                                
+                                sleep 10
+                                
+                                echo "Container status:"
+                                docker ps -a
+                                
+                                echo "Docker compose logs:"
+                                docker-compose logs
+                                
+                                RUNNING_CONTAINERS=\$(docker-compose ps --services --filter "status=running" | wc -l)
+                                TOTAL_SERVICES=\$(docker-compose config --services | wc -l)
+                                
+                                echo "Running containers: \$RUNNING_CONTAINERS out of \$TOTAL_SERVICES"
+                                
+                                if [ "\$RUNNING_CONTAINERS" -lt "\$TOTAL_SERVICES" ]; then
+                                    echo "Not all services are running!"
+                                    exit 1
+                                fi
+                            '
+                        """
+                            }
                         }
                     }
                 }
