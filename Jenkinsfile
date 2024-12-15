@@ -4,8 +4,8 @@ pipeline {
     environment {
         BRANCH_DEV = 'origin/develop'
         BRANCH_PROD = 'origin/main'
-        NEXUS_PROXY = "http://master:9082"
-        NEXUS_PRIVATE = "http://master:9083"
+        NEXUS_PROXY = "http://192.168.11.137:9082"
+        NEXUS_PRIVATE = "http://192.168.11.137:9083"
         NEXUS_CREDENTIALS_ID = "nexus-credentials"
         SERVICES = "config-service,discovery-service,gateway-service,participant-service,training-service"
         TEST_SERVER = '192.168.11.138'
