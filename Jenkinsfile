@@ -100,10 +100,10 @@ pipeline {
                                 usernameVariable: 'NEXUS_USERNAME',
                                 passwordVariable: 'NEXUS_PASSWORD')]) {
 
-                            // Simpler docker login approach
+                            // Correction: Using echo to pass credentials non-interactively
                             sh """
                         ssh -o StrictHostKeyChecking=no ${TEST_SERVER_USER}@${TEST_SERVER} \
-                        'docker login ${NEXUS_PRIVATE} --username "\${NEXUS_USERNAME}" --password "\${NEXUS_PASSWORD}"'
+                        'echo "${NEXUS_PASSWORD}" | docker login ${NEXUS_PRIVATE} --username "${NEXUS_USERNAME}" --password-stdin'
                     """
 
                             modifiedServicesList.each { service ->
