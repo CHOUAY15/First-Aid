@@ -100,62 +100,39 @@ pipeline {
                                 usernameVariable: 'NEXUS_USERNAME',
                                 passwordVariable: 'NEXUS_PASSWORD')]) {
 
-                            // Debugging step to confirm variables
-                            echo "NEXUS_USERNAME=${NEXUS_USERNAME}"
-                            echo "NEXUS_PRIVATE=${NEXUS_PRIVATE}"
-
-                            // Secure login to Nexus on the test server
+                            // Export environment variables and perform docker login
                             sh """
-                        ssh -o StrictHostKeyChecking=no ${TEST_SERVER_USER}@${TEST_SERVER} << EOF
-                            echo "\$NEXUS_PASSWORD" | docker login ${NEXUS_PRIVATE} --username "\$NEXUS_USERNAME" --password-stdin
+                        ssh -o StrictHostKeyChecking=no ${TEST_SERVER_USER}@${TEST_SERVER} << 'EOF'
+                            export NEXUS_USERNAME=${NEXUS_USERNAME}
+                            export NEXUS_PASSWORD=${NEXUS_PASSWORD}
+                            echo \$NEXUS_PASSWORD | docker login ${NEXUS_PRIVATE} --username "\${NEXUS_USERNAME}" --password-stdin
+                            # Proceed with deployment steps
+                            cd ${PROJECT_PATH}
+                            # Create .env file with correct syntax
+                            echo "NEXUS_PRIVATE=${NEXUS_PRIVATE}" > .env
+                            echo "VERSION=${version}" >> .env
+                            # Debug: Show .env contents
+                            echo "Contents of .env:"
+                            cat .env
+                            docker-compose down || true
+                            docker-compose rm -f || true
+                            docker-compose pull || exit 1
+                            docker-compose up --no-start || exit 1
+                            docker-compose up -d
+                            sleep 10
+                            echo "Container status:"
+                            docker ps -a
+                            echo "Docker compose logs:"
+                            docker-compose logs
+                            RUNNING_CONTAINERS=\$(docker-compose ps --services --filter "status=running" | wc -l)
+                            TOTAL_SERVICES=\$(docker-compose config --services | wc -l)
+                            echo "Running containers: \$RUNNING_CONTAINERS out of \$TOTAL_SERVICES"
+                            if [ "\$RUNNING_CONTAINERS" -lt "\$TOTAL_SERVICES" ]; then
+                                echo "Not all services are running!"
+                                exit 1
+                            fi
                         EOF
                     """
-
-                            // Deploy modified services
-                            modifiedServicesList.each { service ->
-                                def version = getEnvVersion(service, envName)
-
-                                sh """
-                            ssh -o StrictHostKeyChecking=no ${TEST_SERVER_USER}@${TEST_SERVER} << EOF
-                                set -x
-                                cd ${PROJECT_PATH}
-                                
-                                # Create .env file
-                                echo "NEXUS_PRIVATE=${NEXUS_PRIVATE}" > .env
-                                echo "VERSION=${version}" >> .env
-                                
-                                # Debug: Show .env contents
-                                echo "Contents of .env:"
-                                cat .env
-                                
-                                # Docker Compose steps
-                                docker-compose down || true
-                                docker-compose rm -f || true
-                                docker-compose pull || exit 1
-                                docker-compose up --no-start || exit 1
-                                docker-compose up -d
-                                
-                                sleep 10
-                                
-                                # Check container statuses
-                                echo "Container status:"
-                                docker ps -a
-                                
-                                echo "Docker Compose logs:"
-                                docker-compose logs
-                                
-                                RUNNING_CONTAINERS=\$(docker-compose ps --services --filter "status=running" | wc -l)
-                                TOTAL_SERVICES=\$(docker-compose config --services | wc -l)
-                                
-                                echo "Running containers: \$RUNNING_CONTAINERS out of \$TOTAL_SERVICES"
-                                
-                                if [ "\$RUNNING_CONTAINERS" -lt "\$TOTAL_SERVICES" ]; then
-                                    echo "Not all services are running!"
-                                    exit 1
-                                fi
-                            EOF
-                        """
-                            }
                         }
                     }
                 }
