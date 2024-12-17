@@ -1,7 +1,7 @@
 version: "3.8"
 services:
   mysql-participant:
-    image: mysql:8.0
+    image: docker.io/mysql:8.0
     container_name: mysql-participant
     environment:
       - MYSQL_DATABASE=first_aid_participant_bd
@@ -19,7 +19,7 @@ services:
       retries: 5
 
   mysql-training:
-    image: mysql:8.0
+    image: docker.io/mysql:8.0
     container_name: mysql-training
     environment:
       - MYSQL_DATABASE=first_aid_training_bd
@@ -36,9 +36,8 @@ services:
       timeout: 10s
       retries: 5
 
-  # PHPMyAdmin
   phpmyadmin:
-    image: phpmyadmin/phpmyadmin
+    image: docker.io/phpmyadmin/phpmyadmin:latest
     container_name: phpmyadmin-firstaid
     ports:
       - "8089:80"
@@ -48,11 +47,8 @@ services:
       PMA_HOSTS: mysql-participant,mysql-training
       PMA_PORTS: 3306,3306
 
-  # Config Server
   config-service:
-    build:
-      context: ./config-service
-      dockerfile: Dockerfile
+    image: ${NEXUS_PRIVATE}/config-service:${VERSION:-latest}
     container_name: config-service
     ports:
       - "9999:9999"
@@ -71,11 +67,8 @@ services:
       retries: 5
       start_period: 60s
 
-  # Service Discovery (Eureka)
   discovery-service:
-    build:
-      context: ./discovery-service
-      dockerfile: Dockerfile
+    image: ${NEXUS_PRIVATE}/discovery-service:${VERSION:-latest}
     container_name: discovery-service
     ports:
       - "8761:8761"
@@ -88,11 +81,8 @@ services:
       retries: 5
       start_period: 60s
 
-  # API Gateway
   gateway-service:
-    build:
-      context: ./gateway-service
-      dockerfile: Dockerfile
+    image: ${NEXUS_PRIVATE}/gateway-service:${VERSION:-latest}
     container_name: gateway-service
     ports:
       - "8888:8888"
@@ -106,11 +96,8 @@ services:
       - SPRING_CLOUD_CONFIG_URI=http://config-service:9999
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
 
-  # Participant Service
   participant-service:
-    build:
-      context: ./participant-service
-      dockerfile: Dockerfile
+    image: ${NEXUS_PRIVATE}/participant-service:${VERSION:-latest}
     container_name: participant-service
     ports:
       - "8082:8082"
@@ -126,11 +113,9 @@ services:
       - SPRING_CONFIG_IMPORT=optional:configserver:http://config-service:9999
       - SPRING_CLOUD_CONFIG_URI=http://config-service:9999
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
-  # Training Service
+
   training-service:
-    build:
-      context: ./training-service
-      dockerfile: Dockerfile
+    image: ${NEXUS_PRIVATE}/training-service:${VERSION:-latest}
     container_name: training-service
     ports:
       - "8081:8081"
@@ -146,6 +131,7 @@ services:
       - SPRING_CONFIG_IMPORT=optional:configserver:http://config-service:9999
       - SPRING_CLOUD_CONFIG_URI=http://config-service:9999
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+
 volumes:
   mysql_participant_data:
   mysql_training_data:
