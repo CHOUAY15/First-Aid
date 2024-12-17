@@ -33,7 +33,7 @@ pipeline {
             }
         }
 
-        stage('Sonarqube Analysis') {
+        stage('Sonarqube') {
             steps {
                 script {
                     withSonarQubeEnv('sonar-server') {
